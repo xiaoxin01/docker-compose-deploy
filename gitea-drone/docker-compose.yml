@@ -1,0 +1,49 @@
+version: '2'
+services:
+  gitea:
+    image: gitea/gitea:1.4.2
+    volumes:
+      - /data/gitea/data:/data
+    ports:
+      - "8001:3000"
+      - "10022:22"
+    depends_on:
+      - mariadb
+    restart: always
+  mariadb:
+    image: mariadb:10
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=changeme
+      - MYSQL_DATABASE=gitea
+      - MYSQL_USER=gitea
+      - MYSQL_PASSWORD=changeme
+    volumes:
+      - /data/gitea/mariadb:/var/lib/mysql
+  drone-server:
+    image: drone/drone:0.8
+    ports:
+      - 8002:8000
+      - 9000
+    volumes:
+      - /var/lib/drone:/var/lib/drone/
+    restart: always
+    environment:
+      - DRONE_OPEN=true
+      - DRONE_HOST=http://localhost:8000
+      - DRONE_ADMIN=changeme
+      - DRONE_GITEA=true
+      - DRONE_GITEA_URL=http://gitea:3000
+      - DRONE_SECRET=drone-workshop
+  drone-agent:
+    image: drone/agent:0.8
+    command: agent
+    restart: always
+    depends_on:
+      - drone-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_SERVER=drone-server:9000
+      - DRONE_SECRET=drone-workshop
+      - DOCKER_API_VERSION=1.24
